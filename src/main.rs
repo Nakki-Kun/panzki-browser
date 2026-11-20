@@ -1,4 +1,5 @@
 mod app;
+mod browsh;
 mod config;
 mod engine;
 mod page;
@@ -136,12 +137,14 @@ fn run() -> Result<ExitCode> {
         if target.is_empty() {
             bail!("nothing to open");
         }
-        let status = std::process::Command::new("browsh")
-            .arg(&target)
-            .status()
-            .context(
-                "could not launch browsh — install it from https://github.com/browsh-org/browsh",
-            )?;
+        let status = browsh::command(&target).status().context(
+            "could not launch browsh — install it from https://github.com/browsh-org/browsh",
+        )?;
+        if !status.success() {
+            eprintln!(
+                "panzki: Browsh exited with {status}; run 'panzki' and press V for a visual preview"
+            );
+        }
         return Ok(if status.success() {
             ExitCode::SUCCESS
         } else {

@@ -14,6 +14,7 @@ use ratatui::layout::Rect;
 use ratatui::text::Line;
 use url::Url;
 
+use crate::browsh;
 use crate::config::{Bookmark, Store, download_dir};
 use crate::engine::{Engine, Fetched};
 use crate::page::{Page, PageKind};
@@ -2021,7 +2022,7 @@ fn event_loop(
         }
         if let Some(url) = app.take_browsh_request() {
             ui::restore()?;
-            let outcome = std::process::Command::new("browsh").arg(&url).status();
+            let outcome = browsh::command(&url).status();
             match ui::init() {
                 Ok(fresh) => {
                     *terminal = fresh;
@@ -2037,7 +2038,9 @@ fn event_loop(
                     app.set_success("Back in Panzki — Browsh closed");
                 }
                 Ok(status) => {
-                    app.set_error(format!("Browsh exited with status {status}"));
+                    app.set_error(format!(
+                        "Browsh exited with {status} — press V for a visual preview"
+                    ));
                 }
                 Err(err) => {
                     app.set_error(format!(

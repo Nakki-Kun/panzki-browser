@@ -151,6 +151,10 @@ Panzki keeps its own session while Browsh is open; when Browsh exits you are ret
 same page and tabs. This gives you both modes: fast native text for documents and articles,
 and full Firefox rendering for complex web apps.
 
+On Ubuntu, Panzki automatically points Browsh's profile and temporary directory at the
+Firefox snap's home and clears stale profile locks, so Browsh works with the snap without any
+manual setup.
+
 ## Configuration
 
 Panzki stores its configuration, bookmarks, and history in your platform's config directory
