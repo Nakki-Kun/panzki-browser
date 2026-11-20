@@ -1,0 +1,50 @@
+[package]
+name = "panzki"
+version = "1.0.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Panzki — a fast, interactive terminal web browser written in Rust"
+authors = [
+    "Panz-08 <281964123+Panz-08@users.noreply.github.com>",
+    "Nakki-Kun <358244958+Nakki-Kun@users.noreply.github.com>",
+]
+license = "MIT"
+repository = "https://github.com/Panz-08/panzki-browser"
+homepage = "https://github.com/Panz-08/panzki-browser"
+documentation = "https://github.com/Panz-08/panzki-browser#readme"
+keywords = ["browser", "tui", "terminal", "cli", "web"]
+categories = ["command-line-utilities", "web-programming"]
+readme = "README.md"
+
+[[bin]]
+name = "panzki"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1.0"
+base64 = "0.23"
+dirs = "7.0"
+ego-tree = "0.11"
+encoding_rs = "0.8"
+percent-encoding = "2.3"
+ratatui = "0.30"
+reqwest = { version = "0.13", features = [
+    "blocking",
+    "cookies",
+    "gzip",
+    "brotli",
+    "deflate",
+    "charset",
+] }
+scraper = "0.29"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+unicode-width = "0.2"
+url = "2.5"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = true
+panic = "abort"
