@@ -566,15 +566,15 @@ impl App {
                     match result.result {
                         Ok(fetched) => {
                             let page = Page::from_fetched(&fetched, &self.store.config, self.width);
-                            let thin_page = page.kind == PageKind::Html
+                            let looks_js = page.kind == PageKind::Html
+                                && page.raw.len() > 5_000
                                 && page.doc.text.trim().len() < 200
                                 && page.raw.to_ascii_lowercase().contains("<script");
+                            let thin_page = looks_js;
                             let needs_reader = self.store.config.reader_fallback
                                 && !result.reader
                                 && !result.fallback
-                                && page.kind == PageKind::Html
-                                && page.doc.text.trim().len() < 200
-                                && page.raw.to_ascii_lowercase().contains("<script");
+                                && looks_js;
                             let fallback_here = result.fallback;
                             self.commit_page(page, result.new_tab);
                             if fallback_here {
@@ -582,7 +582,8 @@ impl App {
                                     "Reader view loaded — JavaScript-heavy page rendered as text."
                                         .to_string();
                             } else if thin_page && !result.reader && !needs_reader {
-                                self.status = "Page looks JavaScript-heavy — press e for reader view, or E for Browsh".to_string();
+                                self.status = "Page looks JavaScript-heavy — e: reader, E: Browsh"
+                                    .to_string();
                             }
                             if needs_reader && !result.new_tab {
                                 self.status =
