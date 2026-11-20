@@ -154,3 +154,9 @@ cargo clippy --all-targets -- -D warnings
 ## License
 
 MIT — see [LICENSE](LICENSE). Made with care by panz-08 and nakki-kun.
+
+## Credits
+
+Panzki is designed and maintained by [panz-08](https://github.com/Panz-08) and
+[nakki-kun](https://github.com/Nakki-Kun). Issues, ideas, and pull requests are welcome from
+everyone — see [AUTHORS](AUTHORS) for the people behind the project.
