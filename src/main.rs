@@ -6,6 +6,7 @@ mod render;
 mod start;
 mod ui;
 mod util;
+mod visual;
 
 use std::io::IsTerminal;
 use std::process::ExitCode;

@@ -40,6 +40,8 @@ Built by **[panz-08](https://github.com/Panz-08)** and **[nakki-kun](https://git
 - **Downloads** — stream any resource to disk with live progress.
 - **Source view** — toggle between the rendered page and its raw HTML.
 - **Mouse support** — scroll with the wheel and click links.
+- **Visual preview** — press `V` to capture the page with headless Firefox and paint the
+  screenshot as coloured half-block cells. Scroll with `j`/`k`; `q` returns to the text view.
 - **Browsh hand-off** — press `E` to open the current page in [Browsh](https://github.com/browsh-org/browsh),
   which renders a real Firefox session to the terminal.
 - **Themes** — dark and light palettes, switchable at runtime.
@@ -103,6 +105,7 @@ panzki --browsh site.com   # full Firefox rendering via Browsh
 | `u` | toggle rendered page / source |
 | `v` | local reader view |
 | `e` | remote reader view |
+| `V` | visual preview (Firefox screenshot as coloured cells) |
 | `E` | open the page in Browsh (real Firefox rendering) |
 | `y` | copy the URL (OSC 52) |
 | `:` | command line |
@@ -113,7 +116,7 @@ panzki --browsh site.com   # full Firefox rendering via Browsh
 
 `:open`, `:tabnew`, `:tabclose`, `:back`, `:forward`, `:reload`, `:home`, `:bookmark`,
 `:bookmarks`, `:history`, `:links`, `:forms`, `:download`, `:downloads`, `:save`, `:source`,
-`:readable`, `:reader`, `:browsh`, `:find`, `:search`, `:theme`, `:set`, `:help`, `:q`.
+`:readable`, `:reader`, `:visual`, `:browsh`, `:find`, `:search`, `:theme`, `:set`, `:help`, `:q`.
 
 ## Rendering: native text vs. Browsh
 
@@ -123,9 +126,21 @@ code, links, and forms. It does **not** execute JavaScript or run a CSS layout e
 JavaScript-heavy sites can look sparse. For those pages, use `e` (reader proxy) or `v` (local
 reader) to extract the readable content.
 
-If you want a pixel-faithful browser engine inside the terminal, Panzki can hand the current
-URL to **Browsh**, which drives Firefox and paints the rendered page as terminal cells. Press
-`E` or run `:browsh`. Browsh must be installed separately:
+### Visual preview (`V`)
+
+Pressing `V` takes a screenshot of the current page with **headless Firefox**, resizes it to the
+terminal width, and paints it using Unicode half-blocks with 24-bit colour. The result is a
+real visual rendering of the page — layout, images, colours — that you can scroll with `j`/`k`,
+`Space`/`b`, or `g`/`G`. Press `q` to return to the text view.
+
+This mode needs Firefox on `PATH`. It is a static screenshot, not a live browser: forms and
+JavaScript interactions still belong in Browsh or a graphical browser.
+
+### Browsh (`E`)
+
+If you want a live Firefox session inside the terminal, Panzki can hand the current URL to
+**Browsh**, which drives Firefox and paints the rendered page as terminal cells. Press `E` or
+run `:browsh`. Browsh must be installed separately:
 
 ```sh
 # https://github.com/browsh-org/browsh

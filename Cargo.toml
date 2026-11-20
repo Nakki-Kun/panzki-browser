@@ -26,6 +26,7 @@ base64 = "0.23"
 dirs = "7.0"
 ego-tree = "0.11"
 encoding_rs = "0.8"
+image = { version = "0.25", default-features = false, features = ["png"] }
 percent-encoding = "2.3"
 ratatui = "0.30"
 reqwest = { version = "0.13", features = [

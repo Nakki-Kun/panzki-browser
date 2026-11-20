@@ -11,6 +11,7 @@ use ratatui::crossterm::event::{
 };
 use ratatui::crossterm::terminal;
 use ratatui::layout::Rect;
+use ratatui::text::Line;
 use url::Url;
 
 use crate::config::{Bookmark, Store, download_dir};
@@ -20,6 +21,7 @@ use crate::render::Doc;
 use crate::start;
 use crate::ui;
 use crate::util::{self, normalize_input};
+use crate::visual::{self, VisualPage};
 
 // ---------------------------------------------------------------------------
 // Small text editor used by the address bar, command line and prompts
@@ -339,6 +341,14 @@ impl Loader {
     }
 }
 
+pub struct VisualState {
+    pub lines: Vec<Line<'static>>,
+    pub scroll: usize,
+    pub width: usize,
+    pub height: usize,
+    pub url: String,
+}
+
 pub struct App {
     pub store: Store,
     pub engine: Engine,
@@ -354,10 +364,12 @@ pub struct App {
     pub content_area: Rect,
     pub tick: usize,
     pub downloads: Vec<DownloadItem>,
+    pub visual: Option<VisualState>,
     pub reader: bool,
     /// Set when the user asks to hand the current page to Browsh. The event
     /// loop restores the terminal, runs Browsh, then re-enters the TUI.
     browsh_request: Option<String>,
+    visual_request: Option<Url>,
     download_tx: Sender<DownloadMsg>,
     download_rx: Receiver<DownloadMsg>,
     loader: Loader,
@@ -385,8 +397,10 @@ impl App {
             content_area: Rect::new(1, 3, width as u16, h.saturating_sub(5)),
             tick: 0,
             downloads: Vec::new(),
+            visual: None,
             reader,
             browsh_request: None,
+            visual_request: None,
             download_tx,
             download_rx,
             loader: Loader::new(),
@@ -753,6 +767,57 @@ impl App {
 
     pub fn take_browsh_request(&mut self) -> Option<String> {
         self.browsh_request.take()
+    }
+
+    /// Ask the event loop to capture a Firefox screenshot of the current page
+    /// and show it as coloured terminal cells.
+    pub fn launch_visual(&mut self) {
+        let url = self.current_page().url.clone();
+        if url.scheme() == "panzki" {
+            self.set_error("Internal pages cannot be captured visually");
+            return;
+        }
+        self.visual_request = Some(url);
+    }
+
+    pub fn take_visual_request(&mut self) -> Option<Url> {
+        self.visual_request.take()
+    }
+
+    pub fn set_visual(&mut self, page: VisualPage, url: String) {
+        self.status = "Visual preview — j/k scroll, q closes".to_string();
+        self.status_tone = StatusTone::Info;
+        self.visual = Some(VisualState {
+            lines: page.lines,
+            scroll: 0,
+            width: page.width,
+            height: page.height,
+            url,
+        });
+    }
+
+    fn handle_visual_key(&mut self, key: KeyEvent) {
+        let Some(visual) = self.visual.as_mut() else {
+            return;
+        };
+        let viewport = self.content_area.height.max(1) as usize;
+        let max_scroll = visual.height.saturating_sub(viewport);
+        match key.code {
+            KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('V') => self.visual = None,
+            KeyCode::Char('j') | KeyCode::Down => {
+                visual.scroll = (visual.scroll + 1).min(max_scroll)
+            }
+            KeyCode::Char('k') | KeyCode::Up => visual.scroll = visual.scroll.saturating_sub(1),
+            KeyCode::PageDown | KeyCode::Char(' ') => {
+                visual.scroll = (visual.scroll + viewport).min(max_scroll)
+            }
+            KeyCode::PageUp | KeyCode::Char('b') => {
+                visual.scroll = visual.scroll.saturating_sub(viewport)
+            }
+            KeyCode::Char('g') | KeyCode::Home => visual.scroll = 0,
+            KeyCode::Char('G') | KeyCode::End => visual.scroll = max_scroll,
+            _ => {}
+        }
     }
 
     pub fn reload_reader(&mut self) {
@@ -1162,7 +1227,8 @@ impl App {
             "source" => self.toggle_source(),
             "readable" | "article" => self.toggle_readable(),
             "reader" => self.reload_reader(),
-            "browsh" | "visual" | "firefox" => self.launch_browsh(),
+            "browsh" | "firefox" => self.launch_browsh(),
+            "visual" | "screenshot" => self.launch_visual(),
             "find" => {
                 if arg.is_empty() {
                     self.mode = Mode::Find {
@@ -1510,6 +1576,10 @@ impl App {
     // -- input ------------------------------------------------------------
 
     pub fn handle_key(&mut self, key: KeyEvent) {
+        if self.visual.is_some() {
+            self.handle_visual_key(key);
+            return;
+        }
         if matches!(self.mode, Mode::Normal) && self.overlay.is_some() {
             self.handle_overlay_key(key);
             return;
@@ -1753,6 +1823,7 @@ impl App {
             KeyCode::Char('f') => self.open_forms_overlay(),
             KeyCode::Char('e') => self.reload_reader(),
             KeyCode::Char('E') => self.launch_browsh(),
+            KeyCode::Char('V') => self.launch_visual(),
             KeyCode::Char('/') => {
                 self.overlay = None;
                 self.mode = Mode::Find {
@@ -1928,13 +1999,32 @@ fn event_loop(
 ) -> Result<()> {
     while !app.should_quit {
         app.poll();
+        if let Some(url) = app.take_visual_request() {
+            ui::restore()?;
+            println!("Panzki: capturing a Firefox screenshot…");
+            let size = terminal::size().unwrap_or((100, 30));
+            let page = visual::capture(&url, size.0, size.1.saturating_sub(2));
+            match ui::init() {
+                Ok(fresh) => {
+                    *terminal = fresh;
+                }
+                Err(err) => {
+                    let _ = ui::restore();
+                    eprintln!("panzki: could not restore the interface: {err:#}");
+                    return Ok(());
+                }
+            }
+            match page {
+                Ok(page) => app.set_visual(page, url.to_string()),
+                Err(err) => app.set_error(format!("Visual preview failed: {err:#}")),
+            }
+        }
         if let Some(url) = app.take_browsh_request() {
             ui::restore()?;
             let outcome = std::process::Command::new("browsh").arg(&url).status();
             match ui::init() {
                 Ok(fresh) => {
                     *terminal = fresh;
-                    terminal.clear()?;
                 }
                 Err(err) => {
                     let _ = ui::restore();

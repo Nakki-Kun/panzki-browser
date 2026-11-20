@@ -22,7 +22,7 @@ or a few words to search the web.</p>
         ("GitHub", "https://github.com"),
         ("Rust Book", "https://doc.rust-lang.org/book/"),
         ("Arch Wiki", "https://wiki.archlinux.org"),
-        ("DuckDuckGo", "https://duckduckgo.com"),
+        ("Bing", "https://www.bing.com"),
         ("Panz-08 on GitHub", "https://github.com/Panz-08"),
         ("Nakki-Kun on GitHub", "https://github.com/Nakki-Kun"),
     ];
@@ -58,6 +58,7 @@ or a few words to search the web.</p>
 <li><b>j</b>/<b>k</b> scroll &nbsp; <b>Space</b> page down &nbsp; <b>g</b>/<b>G</b> top/bottom</li>
 <li><b>H</b>/<b>L</b> back/forward &nbsp; <b>r</b> reload &nbsp; <b>/</b> find &nbsp; <b>?</b> help</li>
 <li><b>f</b> forms &nbsp; <b>B</b> bookmarks &nbsp; <b>d</b> download &nbsp; <b>u</b> source &nbsp; <b>:</b> commands</li>
+<li><b>V</b> visual preview (Firefox screenshot) &nbsp; <b>E</b> Browsh &nbsp; <b>e</b> reader</li>
 </ul>
 <p><i>Home: {}</i></p>
 </body></html>"#,

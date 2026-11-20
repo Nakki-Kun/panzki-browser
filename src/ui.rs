@@ -171,6 +171,10 @@ fn span_style(style: SpanStyle, p: &Palette) -> Style {
 pub fn draw(frame: &mut Frame, app: &mut App) {
     let p = palette(app.store.config.light());
     let area = frame.area();
+    if app.visual.is_some() {
+        draw_visual(frame, area, app, &p);
+        return;
+    }
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -192,6 +196,52 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
         frame.render_widget(Clear, chunks[2]);
         draw_overlay(frame, area, app, &p);
     }
+}
+
+fn draw_visual(frame: &mut Frame, area: Rect, app: &App, p: &Palette) {
+    let Some(visual) = app.visual.as_ref() else {
+        return;
+    };
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(1),
+            Constraint::Min(1),
+            Constraint::Length(1),
+        ])
+        .split(area);
+
+    let header = format!(
+        " VISUAL  {}  {}x{}  {}/{} ",
+        util::truncate(&visual.url, area.width.saturating_sub(30) as usize),
+        visual.width,
+        visual.height,
+        (visual.scroll + 1).min(visual.height),
+        visual.height
+    );
+    frame.render_widget(
+        Paragraph::new(Line::from(Span::styled(
+            header,
+            Style::default()
+                .bg(p.accent)
+                .fg(p.bar_bg)
+                .add_modifier(Modifier::BOLD),
+        ))),
+        chunks[0],
+    );
+
+    let paragraph = Paragraph::new(visual.lines.clone())
+        .scroll(((visual.scroll.min(u16::MAX as usize)) as u16, 0));
+    frame.render_widget(paragraph, chunks[1]);
+
+    let footer = " j/k scroll   Space/b page   g/G top/bottom   q close   V recapture ";
+    frame.render_widget(
+        Paragraph::new(Line::from(Span::styled(
+            footer,
+            Style::default().bg(p.bar_bg).fg(p.dim),
+        ))),
+        chunks[2],
+    );
 }
 
 fn draw_tabs(frame: &mut Frame, area: Rect, app: &App, p: &Palette) {
@@ -747,6 +797,7 @@ fn help_lines(p: &Palette) -> Vec<Line<'static>> {
         k("r", "reload the current page"),
         k("e", "reader view — useful for JavaScript-heavy sites"),
         k("E", "open the page in Browsh (real Firefox rendering)"),
+        k("V", "visual preview — Firefox screenshot as coloured cells"),
         k("v", "local reader view — strips navigation and sidebars"),
         k("Tab / Shift+Tab", "select the next / previous link"),
         k("Enter", "follow the selected link"),
@@ -777,6 +828,7 @@ fn help_lines(p: &Palette) -> Vec<Line<'static>> {
         k(":search words", "search the web"),
         k(":reader", "reload through the reader proxy"),
         k(":browsh", "open the current page in Browsh"),
+        k(":visual", "capture a Firefox screenshot of the page"),
         k(":theme light|dark", "change the color theme"),
         k(":set home=…", "change the start page"),
         k(":set search=…", "change the search URL template"),
