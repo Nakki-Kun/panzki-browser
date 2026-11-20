@@ -355,6 +355,9 @@ pub struct App {
     pub tick: usize,
     pub downloads: Vec<DownloadItem>,
     pub reader: bool,
+    /// Set when the user asks to hand the current page to Browsh. The event
+    /// loop restores the terminal, runs Browsh, then re-enters the TUI.
+    browsh_request: Option<String>,
     download_tx: Sender<DownloadMsg>,
     download_rx: Receiver<DownloadMsg>,
     loader: Loader,
@@ -383,6 +386,7 @@ impl App {
             tick: 0,
             downloads: Vec::new(),
             reader,
+            browsh_request: None,
             download_tx,
             download_rx,
             loader: Loader::new(),
@@ -558,6 +562,9 @@ impl App {
                     match result.result {
                         Ok(fetched) => {
                             let page = Page::from_fetched(&fetched, &self.store.config, self.width);
+                            let thin_page = page.kind == PageKind::Html
+                                && page.doc.text.trim().len() < 200
+                                && page.raw.to_ascii_lowercase().contains("<script");
                             let needs_reader = self.store.config.reader_fallback
                                 && !result.reader
                                 && !result.fallback
@@ -570,6 +577,8 @@ impl App {
                                 self.status =
                                     "Reader view loaded — JavaScript-heavy page rendered as text."
                                         .to_string();
+                            } else if thin_page && !result.reader && !needs_reader {
+                                self.status = "Page looks JavaScript-heavy — press e for reader view, or E for Browsh".to_string();
                             }
                             if needs_reader && !result.new_tab {
                                 self.status =
@@ -724,6 +733,21 @@ impl App {
             url.to_string(),
             false,
         );
+    }
+
+    /// Ask the event loop to open the current page in Browsh, which renders a
+    /// real Firefox session to the terminal.
+    pub fn launch_browsh(&mut self) {
+        let url = self.current_page().url.to_string();
+        if url.starts_with("panzki:") {
+            self.set_error("Internal pages cannot be opened in Browsh");
+            return;
+        }
+        self.browsh_request = Some(url);
+    }
+
+    pub fn take_browsh_request(&mut self) -> Option<String> {
+        self.browsh_request.take()
     }
 
     pub fn reload_reader(&mut self) {
@@ -1133,6 +1157,7 @@ impl App {
             "source" => self.toggle_source(),
             "readable" | "article" => self.toggle_readable(),
             "reader" => self.reload_reader(),
+            "browsh" | "visual" | "firefox" => self.launch_browsh(),
             "find" => {
                 if arg.is_empty() {
                     self.mode = Mode::Find {
@@ -1722,6 +1747,7 @@ impl App {
             KeyCode::Char('y') => self.copy_url(),
             KeyCode::Char('f') => self.open_forms_overlay(),
             KeyCode::Char('e') => self.reload_reader(),
+            KeyCode::Char('E') => self.launch_browsh(),
             KeyCode::Char('/') => {
                 self.overlay = None;
                 self.mode = Mode::Find {
@@ -1899,6 +1925,25 @@ fn event_loop(
 ) -> Result<()> {
     while !app.should_quit {
         app.poll();
+        if let Some(url) = app.take_browsh_request() {
+            ui::restore()?;
+            let outcome = std::process::Command::new("browsh").arg(&url).status();
+            *terminal = ui::init()?;
+            terminal.clear()?;
+            match outcome {
+                Ok(status) if status.success() => {
+                    app.set_success("Back in Panzki — Browsh closed");
+                }
+                Ok(status) => {
+                    app.set_error(format!("Browsh exited with status {status}"));
+                }
+                Err(err) => {
+                    app.set_error(format!(
+                        "Could not launch browsh ({err}). Install it from https://github.com/browsh-org/browsh"
+                    ));
+                }
+            }
+        }
         terminal
             .draw(|frame| ui::draw(frame, app))
             .context("drawing the interface")?;

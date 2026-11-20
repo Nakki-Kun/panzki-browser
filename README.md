@@ -40,6 +40,8 @@ Built by **[panz-08](https://github.com/Panz-08)** and **[nakki-kun](https://git
 - **Downloads** — stream any resource to disk with live progress.
 - **Source view** — toggle between the rendered page and its raw HTML.
 - **Mouse support** — scroll with the wheel and click links.
+- **Browsh hand-off** — press `E` to open the current page in [Browsh](https://github.com/browsh-org/browsh),
+  which renders a real Firefox session to the terminal.
 - **Themes** — dark and light palettes, switchable at runtime.
 - **Headless modes** — pipe pages to `less`, extract links, or dump raw source.
 - **Cookies, compression, and charset detection** — powered by `reqwest`, `encoding_rs`, and
@@ -100,6 +102,7 @@ panzki --reader site.com   # fetch through the reader proxy
 | `u` | toggle rendered page / source |
 | `v` | local reader view |
 | `e` | remote reader view |
+| `E` | open the page in Browsh (real Firefox rendering) |
 | `y` | copy the URL (OSC 52) |
 | `:` | command line |
 | `?` | help |
@@ -109,7 +112,28 @@ panzki --reader site.com   # fetch through the reader proxy
 
 `:open`, `:tabnew`, `:tabclose`, `:back`, `:forward`, `:reload`, `:home`, `:bookmark`,
 `:bookmarks`, `:history`, `:links`, `:forms`, `:download`, `:downloads`, `:save`, `:source`,
-`:readable`, `:reader`, `:find`, `:search`, `:theme`, `:set`, `:help`, `:q`.
+`:readable`, `:reader`, `:browsh`, `:find`, `:search`, `:theme`, `:set`, `:help`, `:q`.
+
+## Rendering: native text vs. Browsh
+
+Panzki is a **native text browser**, in the same family as Lynx and w3m. It parses HTML and
+lays the content out as styled terminal text: headings, paragraphs, lists, tables, quotes,
+code, links, and forms. It does **not** execute JavaScript or run a CSS layout engine, so
+JavaScript-heavy sites can look sparse. For those pages, use `e` (reader proxy) or `v` (local
+reader) to extract the readable content.
+
+If you want a pixel-faithful browser engine inside the terminal, Panzki can hand the current
+URL to **Browsh**, which drives Firefox and paints the rendered page as terminal cells. Press
+`E` or run `:browsh`. Browsh must be installed separately:
+
+```sh
+# https://github.com/browsh-org/browsh
+browsh --version
+```
+
+Panzki keeps its own session while Browsh is open; when Browsh exits you are returned to the
+same page and tabs. This gives you both modes: fast native text for documents and articles,
+and full Firefox rendering for complex web apps.
 
 ## Configuration
 

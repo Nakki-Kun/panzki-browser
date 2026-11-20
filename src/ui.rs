@@ -1,4 +1,5 @@
 use std::io::Stdout;
+use std::sync::Once;
 
 use anyhow::Result;
 use ratatui::Frame;
@@ -25,19 +26,23 @@ use crate::util;
 // Terminal lifecycle
 // ---------------------------------------------------------------------------
 
+static PANIC_HOOK: Once = Once::new();
+
 pub fn init() -> Result<Terminal<CrosstermBackend<Stdout>>> {
-    let hook = std::panic::take_hook();
-    std::panic::set_hook(Box::new(move |info| {
-        let _ = disable_raw_mode();
-        let _ = execute!(
-            std::io::stdout(),
-            LeaveAlternateScreen,
-            DisableMouseCapture,
-            DisableBracketedPaste,
-            Show
-        );
-        hook(info);
-    }));
+    PANIC_HOOK.call_once(|| {
+        let hook = std::panic::take_hook();
+        std::panic::set_hook(Box::new(move |info| {
+            let _ = disable_raw_mode();
+            let _ = execute!(
+                std::io::stdout(),
+                LeaveAlternateScreen,
+                DisableMouseCapture,
+                DisableBracketedPaste,
+                Show
+            );
+            hook(info);
+        }));
+    });
 
     enable_raw_mode()?;
     execute!(
@@ -741,6 +746,7 @@ fn help_lines(p: &Palette) -> Vec<Line<'static>> {
         k("H / L", "go back / forward (also Alt+←/→)"),
         k("r", "reload the current page"),
         k("e", "reader view — useful for JavaScript-heavy sites"),
+        k("E", "open the page in Browsh (real Firefox rendering)"),
         k("v", "local reader view — strips navigation and sidebars"),
         k("Tab / Shift+Tab", "select the next / previous link"),
         k("Enter", "follow the selected link"),
@@ -770,6 +776,7 @@ fn help_lines(p: &Palette) -> Vec<Line<'static>> {
         k(":tabnew [URL]", "open a new tab"),
         k(":search words", "search the web"),
         k(":reader", "reload through the reader proxy"),
+        k(":browsh", "open the current page in Browsh"),
         k(":theme light|dark", "change the color theme"),
         k(":set home=…", "change the start page"),
         k(":set search=…", "change the search URL template"),
