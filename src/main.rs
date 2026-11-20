@@ -28,6 +28,7 @@ struct Args {
     width: usize,
     no_color: bool,
     insecure: bool,
+    browsh: bool,
     ua: Option<String>,
 }
 
@@ -42,6 +43,7 @@ impl Default for Args {
             width: 100,
             no_color: false,
             insecure: false,
+            browsh: false,
             ua: None,
         }
     }
@@ -60,6 +62,7 @@ OPTIONS:
     -s, --source      Print the raw response body and exit
     -l, --links       Print the page's links and exit
         --reader      Fetch through the reader proxy (good for JS-heavy sites)
+        --browsh      Open the URL in Browsh (real Firefox rendering)
         --width N     Render width for dump modes (default 100)
         --no-color    Disable ANSI colors in dump modes
         --insecure    Accept invalid TLS certificates
@@ -101,6 +104,7 @@ fn run() -> Result<ExitCode> {
             "-s" | "--source" => args.source = true,
             "-l" | "--links" => args.links = true,
             "--reader" => args.reader = true,
+            "--browsh" => args.browsh = true,
             "--no-color" => args.no_color = true,
             "--insecure" => args.insecure = true,
             "--width" => {
@@ -119,6 +123,29 @@ fn run() -> Result<ExitCode> {
                 args.target = Some(other.to_string());
             }
         }
+    }
+
+    if args.browsh {
+        let store = Store::load();
+        let input = args
+            .target
+            .clone()
+            .unwrap_or_else(|| store.config.home.clone());
+        let target = normalize_input(&input, &store.config.search);
+        if target.is_empty() {
+            bail!("nothing to open");
+        }
+        let status = std::process::Command::new("browsh")
+            .arg(&target)
+            .status()
+            .context(
+                "could not launch browsh — install it from https://github.com/browsh-org/browsh",
+            )?;
+        return Ok(if status.success() {
+            ExitCode::SUCCESS
+        } else {
+            ExitCode::FAILURE
+        });
     }
 
     let interactive = !(args.dump || args.source || args.links);

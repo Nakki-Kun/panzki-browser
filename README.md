@@ -74,6 +74,7 @@ panzki -d example.com      # render to stdout and exit
 panzki -s example.com      # print the raw response body
 panzki -l example.com      # list links
 panzki --reader site.com   # fetch through the reader proxy
+panzki --browsh site.com   # full Firefox rendering via Browsh
 ```
 
 ### Keys

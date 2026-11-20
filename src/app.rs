@@ -370,7 +370,7 @@ impl App {
         let (w, h) = terminal::size().unwrap_or((80, 24));
         let width = (w as usize).saturating_sub(2).max(20);
         let (download_tx, download_rx) = mpsc::channel();
-        Ok(Self {
+        let mut app = Self {
             store,
             engine,
             tabs: Vec::new(),
@@ -390,7 +390,11 @@ impl App {
             download_tx,
             download_rx,
             loader: Loader::new(),
-        })
+        };
+        // Always keep at least one tab so drawing and key handling never see an
+        // empty tab list while the first asynchronous load is in flight.
+        app.open_home();
+        Ok(app)
     }
 
     // -- pages ------------------------------------------------------------
@@ -1908,8 +1912,6 @@ pub fn run(target: Option<String>, reader: bool, insecure: bool) -> Result<()> {
     let mut app = App::new(insecure, reader)?;
     if let Some(target) = target {
         app.navigate(&target, false);
-    } else {
-        app.open_home();
     }
 
     let mut terminal = ui::init()?;
@@ -1928,8 +1930,17 @@ fn event_loop(
         if let Some(url) = app.take_browsh_request() {
             ui::restore()?;
             let outcome = std::process::Command::new("browsh").arg(&url).status();
-            *terminal = ui::init()?;
-            terminal.clear()?;
+            match ui::init() {
+                Ok(fresh) => {
+                    *terminal = fresh;
+                    terminal.clear()?;
+                }
+                Err(err) => {
+                    let _ = ui::restore();
+                    eprintln!("panzki: could not restore the interface after Browsh: {err:#}");
+                    return Ok(());
+                }
+            }
             match outcome {
                 Ok(status) if status.success() => {
                     app.set_success("Back in Panzki — Browsh closed");
